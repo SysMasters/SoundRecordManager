@@ -1,0 +1,13 @@
+package cn.sysmaster.sound.listener;
+
+/**
+ * @author zhaolewei on 2019/3/11.
+ */
+public interface OnRecordFftDataListener {
+
+    /**
+     * @param data 录音可视化数据，即傅里叶转换后的数据：fftData
+     */
+    void onFftData(byte[] data);
+
+}
