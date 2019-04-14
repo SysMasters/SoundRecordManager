@@ -264,15 +264,15 @@ public class SoundRecordManager {
                 mAudioRecord.stop();
                 mPcmFiles.add(mPcmFile);
                 if (mState == SoundRecordState.STOP) {
+                    // 计时停止
+                    if (mTimerSupport != null) {
+                        mTimerSupport.reset();
+                    }
                     // 判断是否满足最小时长
                     if (mSoundRecordConfig.getMinRecordDuation() > mRecordedTime) {
                         mMainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                // 计时停止
-                                if (mTimerSupport != null) {
-                                    mTimerSupport.reset();
-                                }
                                 if (null != mOnRecordCountDownTimerListener) {
                                     mOnRecordCountDownTimerListener.onNotEnough();
                                 }
