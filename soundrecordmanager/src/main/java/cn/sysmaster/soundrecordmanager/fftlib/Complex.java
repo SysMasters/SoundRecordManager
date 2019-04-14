@@ -1,4 +1,4 @@
-package cn.sysmaster.sound.fftlib;
+package cn.sysmaster.soundrecordmanager.fftlib;
 
 import java.util.Objects;
 

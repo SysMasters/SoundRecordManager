@@ -1,4 +1,4 @@
-package cn.sysmaster.sound.listener;
+package cn.sysmaster.soundrecordmanager.listener;
 
 /**
  * @author sysmaster
@@ -11,5 +11,15 @@ public interface OnRecordCountDownTimerListener {
      *
      * @param millis 剩余时长
      */
-    void onTimer(long millis);
+    void onTick(long millis);
+
+    /**
+     * 完成
+     */
+    void onFinish();
+
+    /**
+     *
+     */
+    void onNotEnough();
 }

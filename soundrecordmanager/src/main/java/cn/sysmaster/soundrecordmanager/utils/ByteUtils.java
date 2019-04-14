@@ -1,4 +1,4 @@
-package cn.sysmaster.sound.utils;
+package cn.sysmaster.soundrecordmanager.utils;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;

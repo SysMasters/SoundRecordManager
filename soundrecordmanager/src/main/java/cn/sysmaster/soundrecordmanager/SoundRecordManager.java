@@ -1,9 +1,8 @@
-package cn.sysmaster.sound;
+package cn.sysmaster.soundrecordmanager;
 
 import android.content.Context;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -19,17 +18,18 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import cn.sysmaster.sound.fftlib.FFT;
-import cn.sysmaster.sound.listener.OnRecordCountDownTimerListener;
-import cn.sysmaster.sound.listener.OnRecordDataListener;
-import cn.sysmaster.sound.listener.OnRecordFftDataListener;
-import cn.sysmaster.sound.listener.OnRecordResultListener;
-import cn.sysmaster.sound.listener.OnRecordSoundSizeListener;
-import cn.sysmaster.sound.listener.OnRecordStateListener;
-import cn.sysmaster.sound.utils.ByteUtils;
-import cn.sysmaster.sound.utils.WavUtils;
+import cn.sysmaster.soundrecordmanager.countdown.CountDownTimerSupport;
+import cn.sysmaster.soundrecordmanager.countdown.OnCountDownTimerListener;
+import cn.sysmaster.soundrecordmanager.fftlib.ByteUtils;
+import cn.sysmaster.soundrecordmanager.fftlib.FFT;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordCountDownTimerListener;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordDataListener;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordFftDataListener;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordResultListener;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordSoundSizeListener;
+import cn.sysmaster.soundrecordmanager.listener.OnRecordStateListener;
+import cn.sysmaster.soundrecordmanager.utils.WavUtils;
 
-import static cn.sysmaster.sound.SoundRecordConfig.AudioRecordConfigBuilder;
 
 /**
  * @author dabo
@@ -66,9 +66,14 @@ public class SoundRecordManager {
     private AudioRecordThread mAudioRecordThread;
 
     /**
-     * 录音计时器
+     * 录音倒计时
      */
-    private CountDownTimer mCountDownTimer;
+    private CountDownTimerSupport mTimerSupport;
+
+    /**
+     * 已录时间
+     */
+    private long mRecordedTime = 0L;
 
     private Handler mMainHandler = new Handler(Looper.getMainLooper());
 
@@ -101,7 +106,7 @@ public class SoundRecordManager {
     }
 
     public SoundRecordManager(Context context) {
-        mSoundRecordConfig = AudioRecordConfigBuilder
+        mSoundRecordConfig = SoundRecordConfig.AudioRecordConfigBuilder
                 .create(context)
                 .build();
     }
@@ -110,36 +115,43 @@ public class SoundRecordManager {
         this.mSoundRecordConfig = config;
     }
 
+
     /**
-     * 初始化计时器
+     * 初始化倒计时
      */
-    private void initCountDownTimer() {
-        if (mSoundRecordConfig.getRecordDuation() <= 0) {
-            return;
-        }
-        mCountDownTimer = new CountDownTimer(mSoundRecordConfig.getRecordDuation() * 1000, 1000) {
+    private void initCountDown() {
+        mTimerSupport = new CountDownTimerSupport(mSoundRecordConfig.getRecordDuation(), 1000);
+        mTimerSupport.setOnCountDownTimerListener(new OnCountDownTimerListener() {
             @Override
             public void onTick(long millisUntilFinished) {
+                mRecordedTime += millisUntilFinished;
                 if (null != mOnRecordCountDownTimerListener) {
-                    mOnRecordCountDownTimerListener.onTimer(millisUntilFinished);
+                    mOnRecordCountDownTimerListener.onTick(millisUntilFinished);
                 }
             }
 
             @Override
             public void onFinish() {
+                // 停止录音
                 stop();
+                if (null != mOnRecordCountDownTimerListener) {
+                    mOnRecordCountDownTimerListener.onFinish();
+                }
             }
-        };
+        });
+
+        mTimerSupport.reset();
+        mTimerSupport.start();
     }
 
     /**
      * 开始录制
      */
     public void start() {
+        mRecordedTime = 0;
         if (mState != SoundRecordState.IDLE) {
             return;
         }
-
         // 录音文件
         mResultFile = new File(getResultFilePath());
         String pcmFilePath = getPcmFilePath();
@@ -148,6 +160,7 @@ public class SoundRecordManager {
         // 开启录制线程
         mAudioRecordThread = new AudioRecordThread();
         mAudioRecordThread.start();
+        initCountDown();
     }
 
     /**
@@ -177,6 +190,10 @@ public class SoundRecordManager {
         }
         mState = SoundRecordState.PAUSE;
         notifyState();
+        // 暂停计时
+        if (mTimerSupport != null) {
+            mTimerSupport.pause();
+        }
     }
 
     /**
@@ -190,6 +207,10 @@ public class SoundRecordManager {
         mPcmFile = new File(pcmFilePath);
         mAudioRecordThread = new AudioRecordThread();
         mAudioRecordThread.start();
+        // 继续计时
+        if (mTimerSupport != null) {
+            mTimerSupport.resume();
+        }
     }
 
 
@@ -221,7 +242,7 @@ public class SoundRecordManager {
 
         /**
          * 开始pcm录制
-         * pcm是{@link android.media.AudioRecord}录制的源文件，不能播放，之后需要自己转换操作
+         * pcm是{@link AudioRecord}录制的源文件，不能播放，之后需要自己转换操作
          */
         private void startPcmRecorder() {
             // 当前状态：录制中
@@ -243,7 +264,29 @@ public class SoundRecordManager {
                 mAudioRecord.stop();
                 mPcmFiles.add(mPcmFile);
                 if (mState == SoundRecordState.STOP) {
-                    makeFile();
+                    // 判断是否满足最小时长
+                    if (mSoundRecordConfig.getMinRecordDuation() > mRecordedTime) {
+                        mMainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                // 计时停止
+                                if (mTimerSupport != null) {
+                                    mTimerSupport.reset();
+                                }
+                                if (null != mOnRecordCountDownTimerListener) {
+                                    mOnRecordCountDownTimerListener.onNotEnough();
+                                }
+                            }
+                        });
+                        // 删除文件
+                        mResultFile.delete();
+                        for (int i = 0; i < mPcmFiles.size(); i++) {
+                            mPcmFiles.get(i).delete();
+                        }
+                        mPcmFiles.clear();
+                    } else {
+                        makeFile();
+                    }
                 } else {
                     // 暂停
                 }
@@ -507,7 +550,7 @@ public class SoundRecordManager {
         return max;
     }
 
-    public int getDb(byte[] data) {
+    private int getDb(byte[] data) {
         double sum = 0;
         double ave;
         int length = data.length > 128 ? 128 : data.length;

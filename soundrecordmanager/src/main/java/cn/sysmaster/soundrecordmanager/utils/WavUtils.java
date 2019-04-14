@@ -1,4 +1,4 @@
-package cn.sysmaster.sound.utils;
+package cn.sysmaster.soundrecordmanager.utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

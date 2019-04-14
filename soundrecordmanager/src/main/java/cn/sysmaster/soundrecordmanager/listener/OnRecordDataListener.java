@@ -1,4 +1,4 @@
-package cn.sysmaster.sound.listener;
+package cn.sysmaster.soundrecordmanager.listener;
 
 /**
  * @author zhaolewei on 2018/7/11.

@@ -1,4 +1,4 @@
-package cn.sysmaster.sound;
+package cn.sysmaster.soundrecordmanager;
 
 import android.content.Context;
 import android.media.AudioFormat;
@@ -20,9 +20,14 @@ public class SoundRecordConfig {
     private String mAudioRecordDir = "";
 
     /**
-     * 录音时长，0为不限制时长
+     * 录音时长，0为不限制时长,毫秒
      */
     private long mRecordDuation = 0L;
+
+    /**
+     * 最小录音时长,毫秒
+     */
+    private long mMinRecordDuation = 0L;
 
     /**
      * 录音格式，默认WAV
@@ -76,6 +81,7 @@ public class SoundRecordConfig {
         private Context mContext;
         private String mAudioRecordDir = "";
         private long mRecordDuation = 0L;
+        private long mMinRecordDuation = 0L;
         private SoundRecordFormat mRecordFormat = SoundRecordFormat.WAV;
         private int mChannelConfig = AudioFormat.CHANNEL_IN_MONO;
         private int mAudioFormat = AudioFormat.ENCODING_PCM_16BIT;
@@ -92,6 +98,11 @@ public class SoundRecordConfig {
 
         public AudioRecordConfigBuilder withAudioRecordDir(String AudioRecordDir) {
             this.mAudioRecordDir = AudioRecordDir;
+            return this;
+        }
+
+        public AudioRecordConfigBuilder withMinRecordDuation(long minRecordDuation) {
+            this.mMinRecordDuation = minRecordDuation;
             return this;
         }
 
@@ -124,6 +135,7 @@ public class SoundRecordConfig {
             return create(mContext).
                     withAudioRecordDir(mAudioRecordDir).
                     withRecordDuation(mRecordDuation).
+                    withMinRecordDuation(mMinRecordDuation).
                     withRecordFormat(mRecordFormat).
                     withChannelConfig(mChannelConfig).
                     withAudioFormat(mAudioFormat).
@@ -139,6 +151,7 @@ public class SoundRecordConfig {
             audioRecordConfig.mAudioRecordDir = this.mAudioRecordDir;
             audioRecordConfig.mAudioFormat = this.mAudioFormat;
             audioRecordConfig.mRecordDuation = this.mRecordDuation;
+            audioRecordConfig.mMinRecordDuation = this.mMinRecordDuation;
             return audioRecordConfig;
         }
     }
@@ -169,6 +182,10 @@ public class SoundRecordConfig {
 
     public int getSampleRateInHz() {
         return mSampleRateInHz;
+    }
+
+    public long getMinRecordDuation() {
+        return mMinRecordDuation;
     }
 
     /**

@@ -1,4 +1,4 @@
-package cn.sysmaster.sound;
+package cn.sysmaster.soundrecordmanager;
 
 /**
  * @author dabo
